@@ -1,0 +1,437 @@
+// نظام إدارة متاجر الهواتف النقّالة — Mbile ERP Database Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────── الأمان والمستخدمون ───────────────────────────
+
+model Permission {
+  key       String           @id
+  nameAr    String
+  roles     RolePermission[]
+}
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  key         String           @unique
+  nameAr      String
+  description String?
+  isSystem    Boolean          @default(false)
+  users       User[]
+  permissions RolePermission[]
+  createdAt   DateTime         @default(now())
+}
+
+model RolePermission {
+  roleId        Int
+  permissionKey String
+  role          Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission    Permission @relation(fields: [permissionKey], references: [key], onDelete: Cascade)
+
+  @@id([roleId, permissionKey])
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  username     String    @unique
+  fullName     String
+  passwordHash String
+  phone        String?
+  roleId       Int
+  role         Role      @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  sessions     Session[]
+  sales        Sale[]
+  purchases    Purchase[]
+  payments     Payment[]
+  returns      Return[]
+  expenses     Expense[]
+  movements    InventoryMovement[]
+  treasuryTxs  TreasuryTransaction[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([roleId])
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ─────────────────────────── الكتالوج والمخزون ───────────────────────────
+
+model Brand {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  products  Product[]
+  createdAt DateTime @default(now())
+}
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  products Product[]
+}
+
+model Product {
+  id             Int      @id @default(autoincrement())
+  name           String
+  sku            String?  @unique
+  barcode        String?  @unique
+  type           String   @default("ACCESSORY") // PHONE | ACCESSORY
+  categoryId     Int?
+  category       Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brandId        Int?
+  brand          Brand?   @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  storageGb      Int?
+  ramGb          Int?
+  color          String?
+  purchasePrice  Int      @default(0)
+  sellingPrice   Int      @default(0)
+  quantity       Int      @default(0)
+  minStock       Int      @default(3)
+  warrantyMonths Int?
+  notes          String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  phoneUnits      PhoneUnit[]
+  saleItems       SaleItem[]
+  purchaseItems   PurchaseItem[]
+  movements       InventoryMovement[]
+  returnItems     ReturnItem[]
+
+  @@index([name])
+  @@index([type])
+  @@index([categoryId])
+  @@index([brandId])
+}
+
+model PhoneUnit {
+  id             Int       @id @default(autoincrement())
+  productId      Int
+  product        Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  imei1          String    @unique
+  imei2          String?
+  serialNumber   String?   @unique
+  status         String    @default("IN_STOCK") // IN_STOCK | SOLD | RETURNED | DEFECTIVE
+  purchasePrice  Int?
+  sellingPrice   Int?
+  warrantyMonths Int?
+  purchaseItemId Int?
+  saleItemId     Int?
+  soldAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([productId])
+  @@index([status])
+  @@index([saleItemId])
+  @@index([purchaseItemId])
+}
+
+model InventoryMovement {
+  id            Int      @id @default(autoincrement())
+  productId     Int
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type          String // PURCHASE | SALE | RETURN_IN | RETURN_OUT | ADJUSTMENT | INITIAL | DAMAGE
+  quantityChange Int
+  balanceAfter  Int
+  referenceType String?
+  referenceId   Int?
+  note          String?
+  userId        Int?
+  user          User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt     DateTime @default(now())
+
+  @@index([productId])
+  @@index([createdAt])
+  @@index([referenceType, referenceId])
+}
+
+// ─────────────────────────── العملاء والموردون ───────────────────────────
+
+model Customer {
+  id        Int       @id @default(autoincrement())
+  name      String
+  phone     String?
+  address   String?
+  notes     String?
+  isActive  Boolean   @default(true)
+  sales     Sale[]
+  payments  Payment[]
+  returns   Return[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([name])
+  @@index([phone])
+}
+
+model Supplier {
+  id        Int       @id @default(autoincrement())
+  name      String
+  phone     String?
+  address   String?
+  notes     String?
+  isActive  Boolean   @default(true)
+  purchases Purchase[]
+  payments  Payment[]
+  returns   Return[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([name])
+  @@index([phone])
+}
+
+// ─────────────────────────── المبيعات ───────────────────────────
+
+model Sale {
+  id            Int       @id @default(autoincrement())
+  invoiceNumber String    @unique
+  customerId    Int?
+  customer      Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  userId        Int
+  user          User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  subtotal      Int       @default(0)
+  discount      Int       @default(0)
+  taxRate       Float     @default(0)
+  taxAmount     Int       @default(0)
+  total         Int       @default(0)
+  paidAmount    Int       @default(0)
+  returnedAmount Int      @default(0)
+  status        String    @default("COMPLETED") // COMPLETED | PARTIALLY_RETURNED | RETURNED
+  paymentMethod String    @default("CASH") // CASH | CARD | OTHER
+  note          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  items    SaleItem[]
+  payments Payment[]
+  returns  Return[]
+
+  @@index([createdAt])
+  @@index([customerId])
+  @@index([userId])
+  @@index([status])
+}
+
+model SaleItem {
+  id               Int      @id @default(autoincrement())
+  saleId           Int
+  sale             Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId        Int
+  product          Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productName      String
+  quantity         Int
+  unitPrice        Int
+  unitCost         Int
+  discount         Int      @default(0)
+  lineTotal        Int
+  lineCost         Int
+  returnedQuantity Int      @default(0)
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+// ─────────────────────────── المشتريات ───────────────────────────
+
+model Purchase {
+  id             Int       @id @default(autoincrement())
+  invoiceNumber  String    @unique
+  supplierId     Int
+  supplier       Supplier  @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  userId         Int
+  user           User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  subtotal       Int       @default(0)
+  discount       Int       @default(0)
+  taxRate        Float     @default(0)
+  taxAmount      Int       @default(0)
+  total          Int       @default(0)
+  paidAmount     Int       @default(0)
+  returnedAmount Int       @default(0)
+  status         String    @default("COMPLETED")
+  note           String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  items    PurchaseItem[]
+  payments Payment[]
+  returns  Return[]
+
+  @@index([createdAt])
+  @@index([supplierId])
+}
+
+model PurchaseItem {
+  id               Int     @id @default(autoincrement())
+  purchaseId       Int
+  purchase         Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  productId        Int
+  product          Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productName      String
+  quantity         Int
+  unitCost         Int
+  lineTotal        Int
+  returnedQuantity Int     @default(0)
+
+  @@index([purchaseId])
+  @@index([productId])
+}
+
+// ─────────────────────────── المدفوعات والمالية ───────────────────────────
+
+model Payment {
+  id         Int       @id @default(autoincrement())
+  kind       String // SALE | PURCHASE | CUSTOMER | SUPPLIER
+  saleId     Int?
+  sale       Sale?     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  purchaseId Int?
+  purchase   Purchase? @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  customerId Int?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  supplierId Int?
+  supplier   Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  amount     Int
+  method     String    @default("CASH") // CASH | CARD | BANK | OTHER
+  treasuryId Int?
+  note       String?
+  userId     Int
+  user       User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  createdAt  DateTime  @default(now())
+
+  @@index([saleId])
+  @@index([purchaseId])
+  @@index([customerId])
+  @@index([supplierId])
+  @@index([createdAt])
+}
+
+model ExpenseCategory {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  isSystem Boolean   @default(false)
+  expenses Expense[]
+}
+
+model Expense {
+  id          Int             @id @default(autoincrement())
+  categoryId  Int
+  category    ExpenseCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  amount      Int
+  description String?
+  method      String          @default("CASH")
+  treasuryId  Int?
+  userId      Int
+  user        User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  createdAt   DateTime        @default(now())
+
+  @@index([categoryId])
+  @@index([createdAt])
+}
+
+model TreasuryTransaction {
+  id            Int      @id @default(autoincrement())
+  direction     String // IN | OUT
+  type          String // SALE_INCOME | CUSTOMER_PAYMENT | SUPPLIER_PAYMENT | EXPENSE | PURCHASE_PAYMENT | WITHDRAWAL | DEPOSIT | OTHER_INCOME | OTHER_EXPENSE | SALE_RETURN_REFUND | PURCHASE_RETURN_IN
+  amount        Int
+  method        String   @default("CASH")
+  referenceType String?
+  referenceId   Int?
+  note          String?
+  userId        Int
+  user          User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  createdAt     DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([type])
+  @@index([referenceType, referenceId])
+}
+
+// ─────────────────────────── المرتجعات ───────────────────────────
+
+model Return {
+  id           Int       @id @default(autoincrement())
+  invoiceNumber String   @unique
+  type         String // SALE_RETURN | PURCHASE_RETURN
+  saleId       Int?
+  sale         Sale?     @relation(fields: [saleId], references: [id], onDelete: SetNull)
+  purchaseId   Int?
+  purchase     Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  customerId   Int?
+  customer     Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  supplierId   Int?
+  supplier     Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  userId       Int
+  user         User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  total        Int       @default(0)
+  refundMethod String    @default("CASH") // CASH | CREDIT
+  restock      Boolean   @default(true)
+  reason       String?
+  createdAt    DateTime  @default(now())
+
+  items ReturnItem[]
+
+  @@index([createdAt])
+  @@index([saleId])
+  @@index([purchaseId])
+}
+
+model ReturnItem {
+  id             Int        @id @default(autoincrement())
+  returnId       Int
+  return         Return     @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  saleItemId     Int?
+  purchaseItemId Int?
+  productId      Int
+  product        Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productName    String
+  quantity       Int
+  unitPrice      Int
+  lineTotal      Int
+
+  @@index([returnId])
+}
+
+// ─────────────────────────── الإعدادات والسجلات ───────────────────────────
+
+model Counter {
+  name  String @id
+  value Int    @default(0)
+}
+
+model Setting {
+  key   String @id
+  value String
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  username  String?
+  action    String
+  entity    String?
+  entityId  String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entity])
+}

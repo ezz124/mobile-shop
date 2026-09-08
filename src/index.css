@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Rubik', system-ui, -apple-system, sans-serif;
+  }
+  body {
+    @apply bg-surface-subtle text-ink antialiased;
+    font-feature-settings: 'ss01';
+  }
+  * {
+    @apply outline-none;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-line-strong rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-ink-mute;
+  }
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+  select {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: left 0.75rem center;
+    padding-left: 2.25rem !important;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl border border-line shadow-card;
+  }
+  .input-base {
+    @apply w-full h-11 rounded-xl border border-line bg-white px-3.5 text-sm text-ink placeholder:text-ink-mute
+      transition-all duration-150 focus:border-primary focus:ring-4 focus:ring-primary/10;
+  }
+  .btn-transition {
+    @apply transition-all duration-150 active:scale-[0.98];
+  }
+}
+
+/* حركات الدخول للصفحات */
+.page-enter {
+  animation: pageIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

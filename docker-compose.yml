@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: mbile-erp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mbile_erp
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - mbile-erp-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mbile_erp"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/mbile_erp?schema=public
+      PORT: 3001
+      WEB_ORIGIN: http://localhost:3001
+    ports:
+      - "3001:3001"
+
+volumes:
+  mbile-erp-postgres:
