@@ -160,7 +160,16 @@ export async function restoreBackup(key: string): Promise<{ ok: boolean }> {
       const fields = columns.map(quoteIdentifier).join(', ');
       const params = columns.map((_, index) => `$${index + 1}`).join(', ');
       const statement = `INSERT INTO ${quoteIdentifier(table)} (${fields}) VALUES (${params})`;
-      for (const row of rows) await tx.$executeRawUnsafe(statement, ...columns.map((column) => row[column] ?? null));
+      for (const row of rows) {
+        const mappedParams = columns.map((column) => {
+          const val = row[column] ?? null;
+          if (typeof val === 'string' && /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$/.test(val)) {
+            return new Date(val);
+          }
+          return val;
+        });
+        await tx.$executeRawUnsafe(statement, ...mappedParams);
+      }
       if (columns.includes('id')) {
         const max = await tx.$queryRawUnsafe<Array<{ max: number | null }>>(`SELECT MAX("id") AS max FROM ${quoteIdentifier(table)}`);
         await tx.$executeRawUnsafe('SELECT setval(pg_get_serial_sequence($1, $2), $3, true)', quoteIdentifier(table), 'id', Math.max(1, max[0]?.max ?? 1));
