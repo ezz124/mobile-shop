@@ -149,26 +149,26 @@ export async function restoreBackup(key: string): Promise<{ ok: boolean }> {
     for (const table of TABLES) {
       const rows = snapshot.tables[table];
       if (rows.length === 0) continue;
-      const allowedColumns = await tx.$queryRawUnsafe<Array<{ column_name: string }>>(
-        'SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = $1', table
+      const allowedColumns = await tx.$queryRawUnsafe<Array<{ column_name: string; data_type: string }>>(
+        'SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = $1', table
       );
       const allowed = new Set(allowedColumns.map((column) => column.column_name));
+      const columnTypes = new Map(allowedColumns.map((c) => [c.column_name, c.data_type]));
       const columns = Object.keys(rows[0]);
       if (columns.length === 0 || columns.some((column) => !allowed.has(column)) || rows.some((row) => Object.keys(row).some((column) => !allowed.has(column)))) {
         throw new AppError(`بيانات جدول ${table} غير صالحة في النسخة الاحتياطية`);
       }
       const fields = columns.map(quoteIdentifier).join(', ');
-      const params = columns.map((_, index) => `$${index + 1}`).join(', ');
+      const params = columns.map((column, index) => {
+        const type = columnTypes.get(column);
+        if (type === 'timestamp without time zone' || type === 'timestamp with time zone' || type === 'date') {
+          return `$${index + 1}::timestamp`;
+        }
+        return `$${index + 1}`;
+      }).join(', ');
       const statement = `INSERT INTO ${quoteIdentifier(table)} (${fields}) VALUES (${params})`;
       for (const row of rows) {
-        const mappedParams = columns.map((column) => {
-          const val = row[column] ?? null;
-          if (typeof val === 'string' && /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$/.test(val)) {
-            return new Date(val);
-          }
-          return val;
-        });
-        await tx.$executeRawUnsafe(statement, ...mappedParams);
+        await tx.$executeRawUnsafe(statement, ...columns.map((column) => row[column] ?? null));
       }
       if (columns.includes('id')) {
         const max = await tx.$queryRawUnsafe<Array<{ max: number | null }>>(`SELECT MAX("id") AS max FROM ${quoteIdentifier(table)}`);
