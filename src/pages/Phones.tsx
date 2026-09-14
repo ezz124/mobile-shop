@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Smartphone, ShieldCheck, RotateCcw } from 'lucide-react';
+import { Smartphone, ShieldCheck, RotateCcw, Edit2 } from 'lucide-react';
 import { invoke } from '@/lib/ipc';
 import { money, formatDate, UNIT_STATUS_LABELS } from '@/lib/format';
 import { useSettings } from '@/store/settings';
 import { useToast } from '@/store/toast';
-import { Badge, Tabs, EmptyState } from '@/components/ui/primitives';
-import { SearchInput, Select } from '@/components/ui/inputs';
+import { Badge, Tabs, EmptyState, Button as Btn, FormField } from '@/components/ui/primitives';
+import { SearchInput, Select, Input } from '@/components/ui/inputs';
 import { DataTable, Pagination, type Column } from '@/components/ui/DataTable';
-import { ConfirmDialog } from '@/components/ui/Modal';
+import { ConfirmDialog, Modal as Mdl } from '@/components/ui/Modal';
 import ProductsView from '@/components/ProductsView';
 import type { PhoneUnitDTO } from '@/shared/ipc';
 
@@ -41,6 +41,7 @@ function UnitsBrowser() {
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const [confirming, setConfirming] = useState<{ unit: PhoneUnitDTO; next: PhoneUnitDTO['status'] } | null>(null);
+  const [editingUnit, setEditingUnit] = useState<PhoneUnitDTO | null>(null);
 
   const timer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => {
@@ -91,23 +92,34 @@ function UnitsBrowser() {
     {
       key: 'actions', header: 'إجراءات', align: 'center',
       render: (u) => (
-        u.status === 'SOLD' ? <span className="text-[11px] text-ink-mute">مبيع</span> : (
-          u.status === 'IN_STOCK' ? (
+        <div className="flex items-center justify-center gap-2">
+          {u.status !== 'SOLD' && (
             <button
-              onClick={() => setConfirming({ unit: u, next: 'DEFECTIVE' })}
-              className="h-8 px-3 rounded-lg text-xs font-semibold text-warning bg-warning-50 hover:bg-warning-100 transition-colors flex items-center gap-1.5 mx-auto"
+              onClick={() => setEditingUnit(u)}
+              className="h-8 w-8 rounded-lg text-ink-soft bg-surface hover:text-primary hover:bg-primary-50 transition-colors flex items-center justify-center"
+              title="تعديل الأرقام التسلسلية"
             >
-              <ShieldCheck size={13} /> تعليم كتالف
+              <Edit2 size={13} />
             </button>
-          ) : (
-            <button
-              onClick={() => setConfirming({ unit: u, next: 'IN_STOCK' })}
-              className="h-8 px-3 rounded-lg text-xs font-semibold text-success bg-success-50 hover:bg-success-100 transition-colors flex items-center gap-1.5 mx-auto"
-            >
-              <RotateCcw size={13} /> إعادة للمخزون
-            </button>
-          )
-        )
+          )}
+          {u.status === 'SOLD' ? <span className="text-[11px] text-ink-mute">مبيع</span> : (
+            u.status === 'IN_STOCK' ? (
+              <button
+                onClick={() => setConfirming({ unit: u, next: 'DEFECTIVE' })}
+                className="h-8 px-3 rounded-lg text-xs font-semibold text-warning bg-warning-50 hover:bg-warning-100 transition-colors flex items-center gap-1.5"
+              >
+                <ShieldCheck size={13} /> تعليم كتالف
+              </button>
+            ) : (
+              <button
+                onClick={() => setConfirming({ unit: u, next: 'IN_STOCK' })}
+                className="h-8 px-3 rounded-lg text-xs font-semibold text-success bg-success-50 hover:bg-success-100 transition-colors flex items-center gap-1.5"
+              >
+                <RotateCcw size={13} /> إعادة للمخزون
+              </button>
+            )
+          )}
+        </div>
       ),
     },
   ];
@@ -148,6 +160,52 @@ function UnitsBrowser() {
         danger={confirming?.next === 'DEFECTIVE'}
         loading={statusMutation.isPending}
       />
+
+      {editingUnit && <EditUnitModal unit={editingUnit} onClose={() => setEditingUnit(null)} />}
     </div>
+  );
+}
+
+function EditUnitModal({ unit, onClose }: { unit: PhoneUnitDTO; onClose: () => void }) {
+  const [imei1, setImei1] = useState(unit.imei1);
+  const [imei2, setImei2] = useState(unit.imei2 ?? '');
+  const [serial, setSerial] = useState(unit.serialNumber ?? '');
+  const { success, error } = useToast();
+  const qc = useQueryClient();
+
+  const mut = useMutation({
+    mutationFn: () => invoke('phoneUnits:update', { id: unit.id, imei1, imei2, serialNumber: serial }),
+    onSuccess: () => {
+      success('تم تحديث أرقام الجهاز بنجاح');
+      qc.invalidateQueries({ queryKey: ['phone-units'] });
+      onClose();
+    },
+    onError: (e) => error(e instanceof Error ? e.message : 'تعذر تحديث البيانات'),
+  });
+
+  return (
+    <Mdl
+      open
+      onClose={onClose}
+      title={`تعديل أرقام: ${unit.product?.name ?? ''}`}
+      footer={
+        <>
+          <Btn variant="ghost" onClick={onClose}>إلغاء</Btn>
+          <Btn loading={mut.isPending} disabled={!imei1.trim()} onClick={() => mut.mutate()}>حفظ التعديلات</Btn>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <FormField label="IMEI 1" required>
+          <Input dir="ltr" className="text-left font-mono" value={imei1} onChange={(e) => setImei1(e.target.value)} />
+        </FormField>
+        <FormField label="IMEI 2">
+          <Input dir="ltr" className="text-left font-mono" value={imei2} onChange={(e) => setImei2(e.target.value)} />
+        </FormField>
+        <FormField label="الرقم التسلسلي (Serial)">
+          <Input dir="ltr" className="text-left font-mono" value={serial} onChange={(e) => setSerial(e.target.value)} />
+        </FormField>
+      </div>
+    </Mdl>
   );
 }

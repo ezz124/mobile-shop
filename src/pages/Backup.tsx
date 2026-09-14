@@ -32,6 +32,12 @@ export default function Backup() {
   const backups: BackupFile[] = data ?? [];
   const rows: BackupRow[] = backups.map((b, i) => ({ ...b, id: i }));
 
+  const { data: dbSizeData } = useQuery({
+    queryKey: ['backup:dbSize'],
+    queryFn: () => invoke('backup:dbSize', {}),
+    refetchInterval: 60_000,
+  });
+
   const createMutation = useMutation({
     mutationFn: () => invoke('backup:create', { name: name.trim() || undefined }),
     onSuccess: () => {
@@ -99,6 +105,23 @@ export default function Backup() {
     },
   ];
 
+  const totalBytes = backups.reduce((sum, b) => sum + (b.size || 0), 0);
+  const storageLimitBytes = 1024 * 1024 * 1024; // 1 GB
+  const storagePercent = Math.min(100, (totalBytes / storageLimitBytes) * 100);
+
+  const dbBytes = dbSizeData?.bytes ?? 0;
+  const dbLimitBytes = 500 * 1024 * 1024; // 500 MB
+  const dbPercent = Math.min(100, (dbBytes / dbLimitBytes) * 100);
+  const dbMb = (dbBytes / (1024 * 1024)).toFixed(1);
+  const dbRemainMb = Math.max(0, (dbLimitBytes - dbBytes) / (1024 * 1024)).toFixed(1);
+  const storageMb = (totalBytes / (1024 * 1024)).toFixed(2);
+
+  function barColor(pct: number) {
+    if (pct >= 85) return 'bg-danger';
+    if (pct >= 60) return 'bg-warning';
+    return 'bg-success';
+  }
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -119,14 +142,53 @@ export default function Backup() {
         </Button>
       </div>
 
-      {/* معلومات */}
-      <Card className="p-4 flex items-start gap-3">
-        <div className="w-9 h-9 rounded-xl bg-primary-50 text-primary flex items-center justify-center shrink-0">
-          <Info size={17} />
+      {/* معلومات + مؤشرات المساحة */}
+      <Card className="p-4 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-primary-50 text-primary flex items-center justify-center shrink-0">
+            <Info size={17} />
+          </div>
+          <div className="text-xs text-ink-soft leading-relaxed space-y-1">
+            <p>• تحفظ النسخ الاحتياطية بشكل خاص وآمن في <span className="font-semibold text-ink">Supabase Storage</span>، ويمكن تفعيل النسخ التلقائي من الإعدادات.</p>
+            <p>• <span className="font-semibold text-danger">تنبيه:</span> الاستعادة تستبدل جميع البيانات الحالية بمحتوى النسخة المحددة. تأكد من وجود نسخة حديثة قبل المتابعة.</p>
+          </div>
         </div>
-        <div className="text-xs text-ink-soft leading-relaxed space-y-1">
-          <p>• تحفظ النسخ الاحتياطية بشكل خاص وآمن في <span className="font-semibold text-ink">Supabase Storage</span>، ويمكن تفعيل النسخ التلقائي من الإعدادات.</p>
-          <p>• <span className="font-semibold text-danger">تنبيه:</span> الاستعادة تستبدل جميع البيانات الحالية بمحتوى النسخة المحددة. تأكد من وجود نسخة حديثة قبل المتابعة.</p>
+
+        {/* مؤشرا المساحة */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-line">
+          {/* مساحة قاعدة البيانات */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-ink">قاعدة البيانات</span>
+              <span className="text-ink-mute" dir="ltr">{dbMb} / 500 م.ب</span>
+            </div>
+            <div className="w-full h-2.5 bg-surface-subtle rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${barColor(dbPercent)}`}
+                style={{ width: `${Math.max(0.5, dbPercent)}%` }}
+              />
+            </div>
+            <p className="text-[11px] text-ink-mute">
+              {dbPercent < 1
+                ? 'سنوات طويلة جداً قدامك'
+                : `متبقي تقريباً ${dbRemainMb} م.ب`}
+            </p>
+          </div>
+
+          {/* مساحة التخزين (النسخ الاحتياطية) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-ink">تخزين النسخ الاحتياطية</span>
+              <span className="text-ink-mute" dir="ltr">{storageMb} / 1,024 م.ب</span>
+            </div>
+            <div className="w-full h-2.5 bg-surface-subtle rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${barColor(storagePercent)}`}
+                style={{ width: `${Math.max(0.5, storagePercent)}%` }}
+              />
+            </div>
+            <p className="text-[11px] text-ink-mute">محفوظ آخر نسختين فقط تلقائياً</p>
+          </div>
         </div>
       </Card>
 

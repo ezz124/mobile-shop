@@ -83,7 +83,7 @@ export async function customerDebt(db: PrismaClient | Tx, customerId: number): P
     where: { customerId },
   });
   const paid = await db.payment.aggregate({ _sum: { amount: true }, where: { customerId } });
-  return Math.max(0, (sales._sum.total ?? 0) - (sales._sum.returnedAmount ?? 0) - (paid._sum.amount ?? 0));
+  return (sales._sum.total ?? 0) - (sales._sum.returnedAmount ?? 0) - (paid._sum.amount ?? 0);
 }
 
 /** ذمة المورد = مجموع (مشترياته - مرتجعاته) - مدفوعاته */
@@ -93,7 +93,7 @@ export async function supplierBalance(db: PrismaClient | Tx, supplierId: number)
     where: { supplierId },
   });
   const paid = await db.payment.aggregate({ _sum: { amount: true }, where: { supplierId } });
-  return Math.max(0, (purchases._sum.total ?? 0) - (purchases._sum.returnedAmount ?? 0) - (paid._sum.amount ?? 0));
+  return (purchases._sum.total ?? 0) - (purchases._sum.returnedAmount ?? 0) - (paid._sum.amount ?? 0);
 }
 
 export function startOfDay(d = new Date()): Date {

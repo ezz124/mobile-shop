@@ -60,7 +60,7 @@ export default function SaleDetailModal({ saleId, onClose }: { saleId: number | 
   async function handlePrint() {
     if (!sale) return;
     try {
-      await invoke('print:html', { html: buildInvoiceHtml(sale, settings), title: sale.invoiceNumber });
+      await invoke('print:html', { html: await buildInvoiceHtml(sale, settings), title: sale.invoiceNumber });
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'تعذر إرسال أمر الطباعة');
     }

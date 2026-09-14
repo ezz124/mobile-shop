@@ -113,7 +113,7 @@ export function registerApi(ipc: ApiRegistrar): void {
     const args = req<'users:list'>(a);
     const { skip, take, page, pageSize } = paginate(args);
     const where = {
-      ...(args.search ? { OR: [{ username: { contains: args.search } }, { fullName: { contains: args.search } }] } : {}),
+      ...(args.search ? { OR: [{ username: { contains: args.search , mode: 'insensitive' as const } }, { fullName: { contains: args.search , mode: 'insensitive' as const } }] } : {}),
       ...(args.roleId ? { roleId: args.roleId } : {}),
       ...(typeof args.isActive === 'boolean' ? { isActive: args.isActive } : {}),
     };
@@ -218,9 +218,9 @@ export function registerApi(ipc: ApiRegistrar): void {
     const where = {
       ...(args.search ? {
         OR: [
-          { name: { contains: args.search } },
-          { sku: { contains: args.search } },
-          { barcode: { contains: args.search } },
+          { name: { contains: args.search , mode: 'insensitive' as const } },
+          { sku: { contains: args.search , mode: 'insensitive' as const } },
+          { barcode: { contains: args.search , mode: 'insensitive' as const } },
         ],
       } : {}),
       ...(args.type ? { type: args.type } : {}),
@@ -375,7 +375,7 @@ export function registerApi(ipc: ApiRegistrar): void {
       where: {
         isActive: true,
         ...(args.type ? { type: args.type } : {}),
-        OR: [{ name: { contains: q } }, { barcode: { contains: q } }],
+        OR: [{ name: { contains: q , mode: 'insensitive' as const } }, { barcode: { contains: q , mode: 'insensitive' as const } }],
       },
       take: 12,
       orderBy: { name: 'asc' },
@@ -420,7 +420,7 @@ export function registerApi(ipc: ApiRegistrar): void {
     const { skip, take, page, pageSize } = paginate(args);
     const where = {
       ...(args.search ? {
-        OR: [{ imei1: { contains: args.search } }, { imei2: { contains: args.search } }, { serialNumber: { contains: args.search } }],
+        OR: [{ imei1: { contains: args.search , mode: 'insensitive' as const } }, { imei2: { contains: args.search , mode: 'insensitive' as const } }, { serialNumber: { contains: args.search , mode: 'insensitive' as const } }],
       } : {}),
       ...(args.status ? { status: args.status } : {}),
       ...(args.productId ? { productId: args.productId } : {}),
@@ -452,6 +452,23 @@ export function registerApi(ipc: ApiRegistrar): void {
       await db().product.update({ where: { id: unit.productId }, data: { quantity: { increment: 1 } } });
     }
     await audit(db(), ctx.session, 'تغيير حالة جهاز', 'PhoneUnit', unit.id, { from: before, to: args.status });
+    return updated;
+  });
+
+  register(ipc, 'phoneUnits:update', ['phones', 'inventory'], async (a, ctx) => {
+    const args = req<'phoneUnits:update'>(a);
+    const unit = await db().phoneUnit.findUnique({ where: { id: args.id } });
+    if (!unit) throw new AppError('الجهاز غير موجود');
+    const updated = await db().phoneUnit.update({
+      where: { id: args.id },
+      data: { 
+        imei1: args.imei1.trim(), 
+        imei2: args.imei2?.trim() || null, 
+        serialNumber: args.serialNumber?.trim() || null 
+      },
+      include: { product: true },
+    });
+    await audit(db(), ctx.session, 'تعديل بيانات جهاز', 'PhoneUnit', unit.id, { before: { imei1: unit.imei1 }, after: { imei1: args.imei1 } });
     return updated;
   });
 
@@ -569,7 +586,7 @@ export function registerApi(ipc: ApiRegistrar): void {
     const { skip, take, page, pageSize } = paginate(args);
     const where = {
       ...(args.search ? {
-        OR: [{ invoiceNumber: { contains: args.search } }, { customer: { name: { contains: args.search } } }],
+        OR: [{ invoiceNumber: { contains: args.search , mode: 'insensitive' as const } }, { customer: { name: { contains: args.search , mode: 'insensitive' as const } } }],
       } : {}),
       ...(args.customerId ? { customerId: args.customerId } : {}),
       ...(args.userId ? { userId: args.userId } : {}),
@@ -656,7 +673,7 @@ export function registerApi(ipc: ApiRegistrar): void {
     const { skip, take, page, pageSize } = paginate(args);
     const where = {
       ...(args.search ? {
-        OR: [{ invoiceNumber: { contains: args.search } }, { supplier: { name: { contains: args.search } } }],
+        OR: [{ invoiceNumber: { contains: args.search , mode: 'insensitive' as const } }, { supplier: { name: { contains: args.search , mode: 'insensitive' as const } } }],
       } : {}),
       ...(args.supplierId ? { supplierId: args.supplierId } : {}),
       ...(args.from || args.to ? {
@@ -734,7 +751,7 @@ export function registerApi(ipc: ApiRegistrar): void {
     const args = req<'customers:list'>(a);
     const { skip, take, page, pageSize } = paginate(args);
     const where = {
-      ...(args.search ? { OR: [{ name: { contains: args.search } }, { phone: { contains: args.search } }] } : {}),
+      ...(args.search ? { OR: [{ name: { contains: args.search , mode: 'insensitive' as const } }, { phone: { contains: args.search , mode: 'insensitive' as const } }] } : {}),
     };
     const [customers, total] = await Promise.all([
       db().customer.findMany({ where, orderBy: { id: 'desc' }, skip, take }),
@@ -823,7 +840,7 @@ export function registerApi(ipc: ApiRegistrar): void {
     const args = req<'suppliers:list'>(a);
     const { skip, take, page, pageSize } = paginate(args);
     const where = {
-      ...(args.search ? { OR: [{ name: { contains: args.search } }, { phone: { contains: args.search } }] } : {}),
+      ...(args.search ? { OR: [{ name: { contains: args.search , mode: 'insensitive' as const } }, { phone: { contains: args.search , mode: 'insensitive' as const } }] } : {}),
     };
     const [suppliers, total] = await Promise.all([
       db().supplier.findMany({ where, orderBy: { id: 'desc' }, skip, take }),
@@ -843,13 +860,13 @@ export function registerApi(ipc: ApiRegistrar): void {
       const totalPurchased = (p?._sum.total ?? 0) - (p?._sum.returnedAmount ?? 0);
       return {
         ...s,
-        balance: Math.max(0, totalPurchased - paid),
+        balance: totalPurchased - paid,
         purchasesCount: p?._count._all ?? 0,
         totalPurchases: totalPurchased,
       };
     });
     if (args.withDebt) {
-      return { data: data.filter((s) => s.balance > 0), total, page, pageSize };
+      return { data: data.filter((s) => s.balance !== 0), total, page, pageSize };
     }
     return { data, total, page, pageSize };
   });
@@ -1063,7 +1080,7 @@ export function registerApi(ipc: ApiRegistrar): void {
     const { skip, take, page, pageSize } = paginate(args);
     const where = {
       ...(args.type ? { type: args.type } : {}),
-      ...(args.search ? { invoiceNumber: { contains: args.search } } : {}),
+      ...(args.search ? { invoiceNumber: { contains: args.search , mode: 'insensitive' as const } } : {}),
       ...(args.from || args.to ? {
         createdAt: {
           ...(args.from ? { gte: parseDate(args.from, new Date(0)) } : {}),
@@ -1182,6 +1199,14 @@ export function registerApi(ipc: ApiRegistrar): void {
     return (await import('./backup')).createBackup(args.name);
   });
   register(ipc, 'backup:list', 'backup', async () => (await import('./backup')).listBackups());
+  register(ipc, 'backup:dbSize', 'backup', async () => {
+    try {
+      const result = await db().$queryRaw<{ size: bigint }[]>`SELECT pg_database_size(current_database()) AS size`;
+      return { bytes: Number(result[0]?.size ?? 0) };
+    } catch {
+      return { bytes: 0 };
+    }
+  });
   register(ipc, 'backup:validate', 'backup', async (a) => {
     const args = req<'backup:validate'>(a);
     return (await import('./backup')).validateBackup(args.fullPath);
@@ -1195,7 +1220,7 @@ export function registerApi(ipc: ApiRegistrar): void {
   register(ipc, 'audit:list', 'settings', async (a) => {
     const args = req<'audit:list'>(a);
     const { skip, take, page, pageSize } = paginate({ ...args, pageSize: args.pageSize ?? 30 });
-    const where = args.search ? { OR: [{ action: { contains: args.search } }, { username: { contains: args.search } }] } : {};
+    const where = args.search ? { OR: [{ action: { contains: args.search , mode: 'insensitive' as const } }, { username: { contains: args.search , mode: 'insensitive' as const } }] } : {};
     const [data, total] = await Promise.all([
       db().auditLog.findMany({ where, orderBy: { id: 'desc' }, skip, take }),
       db().auditLog.count({ where }),

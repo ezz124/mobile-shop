@@ -524,6 +524,7 @@ export interface ApiMap {
 
   'phoneUnits:list': { req: ListParams & { status?: string; productId?: number }; res: Paginated<PhoneUnitDTO> };
   'phoneUnits:setStatus': { req: { id: number; status: PhoneUnitDTO['status'] }; res: PhoneUnitDTO };
+  'phoneUnits:update': { req: { id: number; imei1: string; imei2?: string; serialNumber?: string }; res: PhoneUnitDTO };
 
   'categories:list': { req: Record<string, never>; res: CategoryDTO[] };
   'categories:create': { req: { name: string }; res: CategoryDTO };
@@ -597,6 +598,7 @@ export interface ApiMap {
   'backup:list': { req: Record<string, never>; res: BackupFile[] };
   'backup:validate': { req: { fullPath: string }; res: { ok: boolean; info?: string } };
   'backup:restore': { req: { fullPath: string }; res: { ok: boolean } };
+  'backup:dbSize': { req: Record<string, never>; res: { bytes: number } };
 
   'audit:list': { req: ListParams; res: Paginated<AuditLogDTO> };
 

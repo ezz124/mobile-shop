@@ -109,8 +109,10 @@ export default function ProductFormModal({ open, onClose, product, defaultType, 
         ...base,
         type: isPhone ? 'PHONE' : 'ACCESSORY',
         quantity: form.quantity ? Number(form.quantity) : undefined,
-        initialPhoneUnits: isPhone ? phoneUnits.map((unit) => ({
-          imei1: unit.imei1.trim(), imei2: unit.imei2?.trim() || undefined, serialNumber: unit.serialNumber?.trim() || undefined,
+        initialPhoneUnits: isPhone ? phoneUnits.map((unit, idx) => ({
+          imei1: unit.imei1.trim() || `MB-${Date.now().toString().slice(-4)}${idx}${Math.floor(Math.random() * 1000)}`,
+          imei2: unit.imei2?.trim() || undefined,
+          serialNumber: unit.serialNumber?.trim() || undefined,
         })) : undefined,
         storageGb: isPhone && form.storageGb ? Number(form.storageGb) : undefined,
         ramGb: isPhone && form.ramGb ? Number(form.ramGb) : undefined,
@@ -131,8 +133,7 @@ export default function ProductFormModal({ open, onClose, product, defaultType, 
 
   const phoneQuantity = Math.max(0, Number(form.quantity || 0));
   const validPhoneUnits = phoneUnits.length === phoneQuantity && phoneQuantity > 0
-    && phoneUnits.every((unit) => unit.imei1.trim().length >= 10)
-    && new Set(phoneUnits.map((unit) => unit.imei1.trim())).size === phoneUnits.length;
+    && new Set(phoneUnits.map((unit) => unit.imei1.trim()).filter(Boolean)).size === phoneUnits.filter((u) => u.imei1.trim()).length;
   const valid = form.name.trim().length > 0 && form.purchasePrice !== '' && form.sellingPrice !== '' && (isEdit || !isPhone || validPhoneUnits);
   const set = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -205,17 +206,19 @@ export default function ProductFormModal({ open, onClose, product, defaultType, 
             <Input value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder={isPhone ? 'مثال: Samsung Galaxy A55 — 128GB' : 'مثال: شاحن Samsung 25W أصلي'} autoFocus />
           </FormField>
 
-          <FormField label="التصنيف">
-            <div className="flex items-center gap-2">
-              <Select value={form.categoryId} onChange={(e) => set({ categoryId: e.target.value })}>
-                <option value="">بدون تصنيف</option>
-                {(categories ?? []).map((c: CategoryDTO) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </Select>
-              <Btn size="sm" variant="outline" onClick={() => setManageOpen(true)} icon={<Package size={14} />} className="shrink-0">إدارة</Btn>
-            </div>
-          </FormField>
+          {!isPhone && (
+            <FormField label="التصنيف">
+              <div className="flex items-center gap-2">
+                <Select value={form.categoryId} onChange={(e) => set({ categoryId: e.target.value })}>
+                  <option value="">بدون تصنيف</option>
+                  {(categories ?? []).map((c: CategoryDTO) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </Select>
+                <Btn size="sm" variant="outline" onClick={() => setManageOpen(true)} icon={<Package size={14} />} className="shrink-0">إدارة</Btn>
+              </div>
+            </FormField>
+          )}
 
           <FormField label="الماركة">
             <Select value={form.brandId} onChange={(e) => set({ brandId: e.target.value })}>
@@ -248,7 +251,7 @@ export default function ProductFormModal({ open, onClose, product, defaultType, 
                         return (
                           <div key={index} className="grid grid-cols-[auto_1fr] gap-2 items-center">
                             <span className="w-7 text-center text-xs font-bold text-primary" dir="ltr">{index + 1}</span>
-                            <Input dir="ltr" className={`text-left font-mono ${duplicate ? 'border-danger' : ''}`} value={unit.imei1} onChange={(e) => updatePhoneUnit(index, { imei1: e.target.value })} placeholder="IMEI 1 — مطلوب" />
+                            <Input dir="ltr" className={`text-left font-mono ${duplicate ? 'border-danger' : ''}`} value={unit.imei1} onChange={(e) => updatePhoneUnit(index, { imei1: e.target.value })} placeholder="أدخل IMEI (اختياري)" />
                             {duplicate && <p className="col-start-2 text-[11px] text-danger">رقم IMEI مكرر</p>}
                           </div>
                         );

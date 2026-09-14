@@ -4,8 +4,8 @@ import { invoke } from '@/lib/ipc';
 import type { AppSettings } from '@/shared/ipc';
 
 export const FALLBACK_SETTINGS: AppSettings = {
-  storeName: 'متجر الهواتف النقّالة',
-  storePhone: '',
+  storeName: 'محسن ستور',
+  storePhone: '01000055512',
   storeAddress: '',
   currency: 'ج.م',
   invoiceFooter: 'شكراً لتعاملكم معنا',

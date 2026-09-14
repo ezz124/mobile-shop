@@ -147,7 +147,7 @@ export default function POS() {
 
   async function printSale(sale: SaleDTO) {
     const full = sale.items?.length ? sale : await invoke('sales:get', { id: sale.id });
-    await invoke('print:html', { html: buildInvoiceHtml(full, settings), title: sale.invoiceNumber });
+    await invoke('print:html', { html: await buildInvoiceHtml(full, settings), title: sale.invoiceNumber });
   }
 
   const somePhoneUnpicked = cart.some((l) => l.product.type === 'PHONE' && l.phoneUnitIds.length === 0);

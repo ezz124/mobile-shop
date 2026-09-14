@@ -67,7 +67,7 @@ export default function Invoices() {
   async function printSale(row: SaleRow) {
     try {
       const sale = await invoke('sales:get', { id: row.id });
-      await invoke('print:html', { html: buildInvoiceHtml(sale, settings), title: sale.invoiceNumber });
+      await invoke('print:html', { html: await buildInvoiceHtml(sale, settings), title: sale.invoiceNumber });
     } catch (e) {
       toastError(e instanceof Error ? e.message : 'تعذر إرسال أمر الطباعة');
     }

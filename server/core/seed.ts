@@ -26,9 +26,9 @@ const ROLE_DEFS: { key: string; nameAr: string; description: string; permissions
 ];
 
 export const DEFAULT_SETTINGS: Record<string, string> = {
-  storeName: 'متجر الهواتف النقّالة',
-  storePhone: '',
-  storeAddress: '',
+  storeName: 'محسن ستور',
+  storePhone: '01000055512',
+  storeAddress: 'جميع خدمات المحمول',
   currency: 'ج.م',
   invoiceFooter: 'شكراً لتعاملكم معنا — نتمنى لكم يوماً سعيداً',
   lowStockThreshold: '3',

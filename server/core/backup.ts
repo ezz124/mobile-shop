@@ -44,6 +44,10 @@ async function ensureBucket(): Promise<void> {
     body: JSON.stringify({ id: bucket, name: bucket, public: false, file_size_limit: 50 * 1024 * 1024 }),
   });
   if (response.ok || response.status === 409) return;
+  const text = await response.text().catch(() => '');
+  if (text.includes('BucketAlreadyExists') || text.includes('"statusCode":"409"')) return;
+  
+  console.error('[Backup Error] ensureBucket failed:', response.status, text);
   throw new AppError('تعذر تجهيز مساحة النسخ الاحتياطي على Supabase');
 }
 
@@ -82,6 +86,21 @@ export async function createBackup(name?: string): Promise<BackupFileMeta> {
     body: content,
   });
   if (!response.ok) throw new AppError('تعذر رفع النسخة الاحتياطية إلى Supabase');
+  
+  // الاحتفاظ بآخر نسختين فقط لتوفير المساحة
+  try {
+    const backups = await listBackups();
+    if (backups.length > 2) {
+      for (const old of backups.slice(2)) {
+        await storageFetch(`/object/${encodeURIComponent(bucket)}/${safeKey(old.fullPath)}`, {
+          method: 'DELETE',
+        }).catch(err => console.error('[Backup Error] failed to delete old backup:', err));
+      }
+    }
+  } catch (err) {
+    console.error('[Backup Error] failed to prune old backups:', err);
+  }
+
   return { name: key.split('/').pop()!, fullPath: key, size: Buffer.byteLength(content), createdAt: now.toISOString() };
 }
 

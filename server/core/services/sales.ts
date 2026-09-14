@@ -197,6 +197,7 @@ export async function createSale(db: PrismaClient, input: CreateSaleInput, sessi
         items: { include: { product: { select: { id: true, name: true } } } },
         customer: true,
         payments: true,
+        user: { select: { id: true, fullName: true, username: true } },
       },
     });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 20_000 });
@@ -257,7 +258,7 @@ export async function deleteSale(db: PrismaClient, saleId: number, session: Auth
 
     await tx.sale.delete({ where: { id: sale.id } });
     return { ok: true };
-  });
+  }, { timeout: 30000 });
 }
 
 export async function addSalePayment(

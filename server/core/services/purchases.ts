@@ -224,7 +224,7 @@ export async function deletePurchase(db: PrismaClient, purchaseId: number, sessi
     });
     await tx.purchase.delete({ where: { id: purchase.id } });
     return { ok: true };
-  });
+  }, { timeout: 30000 });
 }
 
 export async function addPurchasePayment(
