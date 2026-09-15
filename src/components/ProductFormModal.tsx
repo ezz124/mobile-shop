@@ -305,6 +305,36 @@ export default function ProductFormModal({ open, onClose, product, defaultType, 
 
 // ─────────────────────────── إدارة التصنيفات والماركات ───────────────────────────
 
+function ListSection({ title, items, onAdd, addLoading, newValue, setNewValue, onDelete }: {
+  title: string; items: { id: number; name: string; productCount?: number }[];
+  onAdd: () => void; addLoading: boolean; newValue: string; setNewValue: (v: string) => void;
+  onDelete: (id: number) => void;
+}) {
+  return (
+    <div className="space-y-2.5">
+      <h4 className="text-sm font-bold text-ink">{title}</h4>
+      <div className="flex items-center gap-2">
+        <Input value={newValue} onChange={(e) => setNewValue(e.target.value)} placeholder="أضف جديد…" className="h-10 text-sm" />
+        <Btn size="sm" onClick={onAdd} loading={addLoading} disabled={!newValue.trim()} icon={<Plus size={14} />} className="shrink-0">إضافة</Btn>
+      </div>
+      <div className="space-y-1 max-h-56 overflow-y-auto">
+        {items.length === 0 && <p className="text-xs text-ink-mute text-center py-4">لا يوجد</p>}
+        {items.map((item) => (
+          <div key={item.id} className="flex items-center justify-between gap-2 rounded-xl border border-line px-3 py-2">
+            <span className="text-sm font-medium text-ink">{item.name}</span>
+            <div className="flex items-center gap-2">
+              {item.productCount != null && <Bdg tone="gray">{item.productCount} منتج</Bdg>}
+              <button onClick={() => onDelete(item.id)} className="text-ink-mute hover:text-danger transition-colors">
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ManageCategoriesModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { success, error: toastError } = useToast();
   const queryClient = useQueryClient();
@@ -339,34 +369,6 @@ export function ManageCategoriesModal({ open, onClose }: { open: boolean; onClos
     onSuccess: () => { success('تم الحذف'); invalidate(); },
     onError: (e) => toastError(e instanceof Error ? e.message : 'لا يمكن حذف ماركة مرتبطة بمنتجات'),
   });
-
-  const ListSection = ({ title, items, onAdd, addLoading, newValue, setNewValue, onDelete }: {
-    title: string; items: { id: number; name: string; productCount?: number }[];
-    onAdd: () => void; addLoading: boolean; newValue: string; setNewValue: (v: string) => void;
-    onDelete: (id: number) => void;
-  }) => (
-    <div className="space-y-2.5">
-      <h4 className="text-sm font-bold text-ink">{title}</h4>
-      <div className="flex items-center gap-2">
-        <Input value={newValue} onChange={(e) => setNewValue(e.target.value)} placeholder="أضف جديد…" className="h-10 text-sm" />
-        <Btn size="sm" onClick={onAdd} loading={addLoading} disabled={!newValue.trim()} icon={<Plus size={14} />} className="shrink-0">إضافة</Btn>
-      </div>
-      <div className="space-y-1 max-h-56 overflow-y-auto">
-        {items.length === 0 && <p className="text-xs text-ink-mute text-center py-4">لا يوجد</p>}
-        {items.map((item) => (
-          <div key={item.id} className="flex items-center justify-between gap-2 rounded-xl border border-line px-3 py-2">
-            <span className="text-sm font-medium text-ink">{item.name}</span>
-            <div className="flex items-center gap-2">
-              {item.productCount != null && <Bdg tone="gray">{item.productCount} منتج</Bdg>}
-              <button onClick={() => onDelete(item.id)} className="text-ink-mute hover:text-danger transition-colors">
-                <Trash2 size={14} />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 
   return (
     <Mdl open={open} onClose={onClose} title="إدارة التصنيفات والماركات" size="md">
