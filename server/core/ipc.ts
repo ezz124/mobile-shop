@@ -341,12 +341,11 @@ export function registerApi(ipc: ApiRegistrar): void {
 
   register(ipc, 'products:delete', ['products', 'phones', 'accessories'], async (a, ctx) => {
     const args = req<'products:delete'>(a);
-    const [saleItems, purchaseItems, units] = await Promise.all([
+    const [saleItems, purchaseItems] = await Promise.all([
       db().saleItem.count({ where: { productId: args.id } }),
       db().purchaseItem.count({ where: { productId: args.id } }),
-      db().phoneUnit.count({ where: { productId: args.id } }),
     ]);
-    if (saleItems > 0 || purchaseItems > 0 || units > 0) {
+    if (saleItems > 0 || purchaseItems > 0) {
       throw new AppError('لا يمكن حذف منتج مرتبط بحركات بيع أو شراء — عطّله بدلاً من ذلك');
     }
     await db().product.delete({ where: { id: args.id } });
