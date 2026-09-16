@@ -50,6 +50,8 @@ const schemas: Partial<Record<ApiChannel, z.ZodTypeAny>> = {
   'products:get': z.object({ id }).strict(),
   'products:lookup': z.object({ query: text.max(100), type: z.enum(['PHONE', 'ACCESSORY']).optional() }).strict(),
   'phoneUnits:setStatus': z.object({ id, status: z.enum(['IN_STOCK', 'SOLD', 'RETURNED', 'DEFECTIVE']) }).strict(),
+  'phoneUnits:add': z.object({ productId: id, quantity: z.number().int().min(1).max(10_000), imeis: z.array(z.string().trim().max(64)).max(100).optional() }).strict(),
+  'phoneUnits:remove': z.object({ unitIds: z.array(id).min(1).max(100) }).strict(),
   'phoneUnits:list': list.extend({ status: z.enum(['IN_STOCK', 'SOLD', 'RETURNED', 'DEFECTIVE']).optional(), productId: id.optional() }),
   'categories:create': z.object({ name: text }).strict(),
   'categories:update': z.object({ id, name: text }).strict(),

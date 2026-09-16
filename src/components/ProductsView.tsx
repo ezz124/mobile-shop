@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, Plus, Pencil, Trash2, Power, Smartphone, Headphones } from 'lucide-react';
+import { Package, Plus, Pencil, Trash2, Power, Smartphone, Headphones, PlusCircle, MinusCircle, Scale } from 'lucide-react';
 import { invoke } from '@/lib/ipc';
 import { money, num, formatDate, UNIT_STATUS_LABELS } from '@/lib/format';
 import { useSettings } from '@/store/settings';
@@ -10,6 +10,7 @@ import { SearchInput, Select } from '@/components/ui/inputs';
 import { DataTable, Pagination, type Column } from '@/components/ui/DataTable';
 import { Modal, ConfirmDialog } from '@/components/ui/Modal';
 import ProductFormModal from '@/components/ProductFormModal';
+import { AddPhoneUnitsModal, RemovePhoneUnitsModal, AdjustAccessoryModal } from './ProductAdjustModals';
 import type { ProductDTO, CategoryDTO, BrandDTO, PhoneUnitDTO } from '@/shared/ipc';
 
 export default function ProductsView({ type }: { type?: 'PHONE' | 'ACCESSORY' }) {
@@ -27,6 +28,9 @@ export default function ProductsView({ type }: { type?: 'PHONE' | 'ACCESSORY' })
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<ProductDTO | null>(null);
   const [deleting, setDeleting] = useState<ProductDTO | null>(null);
+  const [addingUnits, setAddingUnits] = useState<ProductDTO | null>(null);
+  const [removingUnits, setRemovingUnits] = useState<ProductDTO | null>(null);
+  const [adjusting, setAdjusting] = useState<{ product: ProductDTO, defaultMode: 'add' | 'remove' } | null>(null);
   const [detailId, setDetailId] = useState<number | null>(null);
 
   const timer = useRef<ReturnType<typeof setTimeout>>();
@@ -126,6 +130,26 @@ export default function ProductsView({ type }: { type?: 'PHONE' | 'ACCESSORY' })
       key: 'actions', header: 'إجراءات', align: 'center',
       render: (p) => (
         <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+          {p.type === 'PHONE' && (
+            <>
+              <button onClick={() => setAddingUnits(p)} className="w-8 h-8 rounded-lg text-ink-soft hover:bg-success-50 hover:text-success transition-colors" title="إضافة أجهزة (زيادة كمية)">
+                <PlusCircle size={15} className="mx-auto" />
+              </button>
+              <button onClick={() => setRemovingUnits(p)} className="w-8 h-8 rounded-lg text-ink-soft hover:bg-warning-50 hover:text-warning transition-colors" title="إزالة أجهزة (تقليل كمية)">
+                <MinusCircle size={15} className="mx-auto" />
+              </button>
+            </>
+          )}
+          {p.type === 'ACCESSORY' && (
+            <>
+              <button onClick={() => setAdjusting({ product: p, defaultMode: 'add' })} className="w-8 h-8 rounded-lg text-ink-soft hover:bg-success-50 hover:text-success transition-colors" title="زيادة كمية">
+                <PlusCircle size={15} className="mx-auto" />
+              </button>
+              <button onClick={() => setAdjusting({ product: p, defaultMode: 'remove' })} className="w-8 h-8 rounded-lg text-ink-soft hover:bg-warning-50 hover:text-warning transition-colors" title="تقليل كمية">
+                <MinusCircle size={15} className="mx-auto" />
+              </button>
+            </>
+          )}
           <button onClick={() => { setEditing(p); setFormOpen(true); }} className="w-8 h-8 rounded-lg text-ink-soft hover:bg-primary-50 hover:text-primary transition-colors" title="تعديل">
             <Pencil size={15} className="mx-auto" />
           </button>
@@ -250,6 +274,10 @@ export default function ProductsView({ type }: { type?: 'PHONE' | 'ACCESSORY' })
         danger
         loading={deleteMutation.isPending}
       />
+
+      <AddPhoneUnitsModal product={addingUnits} onClose={() => setAddingUnits(null)} />
+      <RemovePhoneUnitsModal product={removingUnits} onClose={() => setRemovingUnits(null)} />
+      <AdjustAccessoryModal product={adjusting?.product ?? null} defaultMode={adjusting?.defaultMode ?? 'add'} onClose={() => setAdjusting(null)} />
     </div>
   );
 }

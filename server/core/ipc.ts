@@ -454,6 +454,89 @@ export function registerApi(ipc: ApiRegistrar): void {
     return updated;
   });
 
+  register(ipc, 'phoneUnits:add', ['phones', 'inventory', 'products'], async (a, ctx) => {
+    const args = req<'phoneUnits:add'>(a);
+    const product = await db().product.findUnique({ where: { id: args.productId } });
+    if (!product || product.type !== 'PHONE') throw new AppError('المنتج غير موجود أو ليس هاتفاً');
+    
+    let providedImeis = (args.imeis ?? []).filter(Boolean);
+    if (new Set(providedImeis).size !== providedImeis.length) {
+      throw new AppError('لا يمكن تكرار رقم IMEI في القائمة المُدخلة');
+    }
+    
+    if (providedImeis.length > 0) {
+      const existing = await db().phoneUnit.findFirst({ where: { imei1: { in: providedImeis } } });
+      if (existing) throw new AppError(`الجهاز ذو IMEI (${existing.imei1}) مسجل مسبقاً`);
+    }
+
+    const unitsToCreate: { productId: number; imei1: string; status: string; purchasePrice: number; sellingPrice: number; warrantyMonths: number | null }[] = [];
+    for (let i = 0; i < args.quantity; i++) {
+      let imei = providedImeis[i];
+      if (!imei) {
+        imei = `AUTO-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+      }
+      unitsToCreate.push({
+        productId: product.id,
+        imei1: imei,
+        status: 'IN_STOCK',
+        purchasePrice: product.purchasePrice,
+        sellingPrice: product.sellingPrice,
+        warrantyMonths: product.warrantyMonths ?? null,
+      });
+    }
+
+    await db().$transaction(async (tx) => {
+      await tx.phoneUnit.createMany({ data: unitsToCreate });
+      await tx.product.update({ where: { id: product.id }, data: { quantity: { increment: args.quantity } } });
+      await tx.inventoryMovement.create({
+        data: {
+          productId: product.id,
+          type: 'ADJUSTMENT',
+          quantityChange: args.quantity,
+          balanceAfter: product.quantity + args.quantity,
+          note: 'إضافة أجهزة يدوياً',
+          userId: ctx.session!.userId,
+        }
+      });
+    });
+    await audit(db(), ctx.session, 'إضافة أجهزة', 'Product', product.id, { quantity: args.quantity });
+    return { ok: true };
+  });
+
+  register(ipc, 'phoneUnits:remove', ['phones', 'inventory', 'products'], async (a, ctx) => {
+    const args = req<'phoneUnits:remove'>(a);
+    const units = await db().phoneUnit.findMany({ where: { id: { in: args.unitIds }, status: 'IN_STOCK' }, include: { product: true } });
+    
+    if (units.length === 0) return { ok: true };
+    const productId = units[0].productId;
+    const product = await db().product.findUnique({ where: { id: productId } });
+    if (!product) throw new AppError('المنتج غير موجود');
+
+    await db().$transaction(async (tx) => {
+      await tx.phoneUnit.updateMany({
+        where: { id: { in: units.map(u => u.id) } },
+        data: { status: 'DEFECTIVE' }
+      });
+      await tx.product.update({
+        where: { id: productId },
+        data: { quantity: { decrement: units.length } }
+      });
+      await tx.inventoryMovement.create({
+        data: {
+          productId: productId,
+          type: 'DAMAGE',
+          quantityChange: -units.length,
+          balanceAfter: product.quantity - units.length,
+          note: 'إزالة أجهزة يدوياً',
+          userId: ctx.session!.userId,
+        }
+      });
+    });
+    
+    await audit(db(), ctx.session, 'إزالة أجهزة', 'Product', productId, { count: units.length });
+    return { ok: true };
+  });
+
   register(ipc, 'phoneUnits:update', ['phones', 'inventory'], async (a, ctx) => {
     const args = req<'phoneUnits:update'>(a);
     const unit = await db().phoneUnit.findUnique({ where: { id: args.id } });
