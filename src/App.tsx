@@ -30,6 +30,7 @@ const Reports = lazy(() => import('./pages/Reports'));
 const Users = lazy(() => import('./pages/Users'));
 const SettingsPage = lazy(() => import('./pages/Settings'));
 const Backup = lazy(() => import('./pages/Backup'));
+const BarcodePrint = lazy(() => import('./pages/BarcodePrint'));
 
 function PageFallback() {
   return (
@@ -100,6 +101,7 @@ function AnimatedRoutes() {
         <Route path="phones" element={withTransition(<Phones />)} />
         <Route path="accessories" element={withTransition(<Accessories />)} />
         <Route path="inventory" element={withTransition(<Inventory />)} />
+        <Route path="barcode-print" element={withTransition(<BarcodePrint />)} />
         <Route path="sales" element={withTransition(<Sales />)} />
         <Route path="purchases" element={withTransition(<Purchases />)} />
         <Route path="returns" element={withTransition(<Returns />)} />

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { HandCoins, Trash2, Undo2 } from 'lucide-react';
+import { HandCoins, Trash2, Undo2, Printer } from 'lucide-react';
 import { invoke } from '@/lib/ipc';
 import { PAYMENT_METHODS, formatDate, formatDateTime, money, num, paymentMethodLabel } from '@/lib/format';
 import { useSettings } from '@/store/settings';
@@ -9,6 +9,8 @@ import { Badge, Button, FormField, Spinner } from '@/components/ui/primitives';
 import { Input, Select } from '@/components/ui/inputs';
 import { ConfirmDialog, Modal } from '@/components/ui/Modal';
 import ReturnCreateModal from './ReturnCreateModal';
+import BarcodePrintModal from './BarcodePrintModal';
+import { getProductBarcode } from '@/lib/barcode';
 import type { PaymentDTO, PurchaseDTO } from '@/shared/ipc';
 
 /** فاتورة الشراء مع الدفعات إن أعادها الخادم */
@@ -48,6 +50,7 @@ export default function PurchaseDetailModal({ purchaseId, onClose }: { purchaseI
   const [payOpen, setPayOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [barcodeOpen, setBarcodeOpen] = useState(false);
 
   const { data: purchase, isLoading } = useQuery({
     queryKey: ['purchase-detail', purchaseId],
@@ -74,6 +77,9 @@ export default function PurchaseDetailModal({ purchaseId, onClose }: { purchaseI
     <>
       <Button variant="ghost" className="text-danger hover:bg-danger-50" icon={<Trash2 size={16} />} onClick={() => setDeleteOpen(true)}>
         حذف
+      </Button>
+      <Button variant="outline" icon={<Printer size={16} />} onClick={() => setBarcodeOpen(true)}>
+        طباعة الباركود
       </Button>
       {hasReturnable && (
         <Button variant="outline" icon={<Undo2 size={16} />} onClick={() => setReturnOpen(true)}>
@@ -218,6 +224,21 @@ export default function PurchaseDetailModal({ purchaseId, onClose }: { purchaseI
         confirmLabel="حذف"
         danger
         loading={deleteMutation.isPending}
+      />
+
+      <BarcodePrintModal
+        open={barcodeOpen}
+        onClose={() => setBarcodeOpen(false)}
+        title={`طباعة باركود أصناف الفاتورة (${purchase?.invoiceNumber ?? ''})`}
+        initialItems={
+          (purchase?.items ?? []).map((it) => ({
+            id: it.productId,
+            name: it.productName,
+            barcode: `P${String(it.productId).padStart(6, '0')}`,
+            price: it.unitCost,
+            quantity: it.quantity,
+          }))
+        }
       />
     </>
   );

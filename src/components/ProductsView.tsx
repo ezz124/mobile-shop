@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, Plus, Pencil, Trash2, Power, Smartphone, Headphones, PlusCircle, MinusCircle, Scale } from 'lucide-react';
+import { Package, Plus, Pencil, Trash2, Power, Smartphone, Headphones, PlusCircle, MinusCircle, Scale, Printer } from 'lucide-react';
 import { invoke } from '@/lib/ipc';
 import { money, num, formatDate, UNIT_STATUS_LABELS } from '@/lib/format';
 import { useSettings } from '@/store/settings';
@@ -10,6 +10,8 @@ import { SearchInput, Select } from '@/components/ui/inputs';
 import { DataTable, Pagination, type Column } from '@/components/ui/DataTable';
 import { Modal, ConfirmDialog } from '@/components/ui/Modal';
 import ProductFormModal from '@/components/ProductFormModal';
+import BarcodePrintModal from '@/components/BarcodePrintModal';
+import { getProductBarcode, type PrintItem } from '@/lib/barcode';
 import { AddPhoneUnitsModal, RemovePhoneUnitsModal, AdjustAccessoryModal } from './ProductAdjustModals';
 import type { ProductDTO, CategoryDTO, BrandDTO, PhoneUnitDTO } from '@/shared/ipc';
 
@@ -32,6 +34,7 @@ export default function ProductsView({ type }: { type?: 'PHONE' | 'ACCESSORY' })
   const [removingUnits, setRemovingUnits] = useState<ProductDTO | null>(null);
   const [adjusting, setAdjusting] = useState<{ product: ProductDTO, defaultMode: 'add' | 'remove' } | null>(null);
   const [detailId, setDetailId] = useState<number | null>(null);
+  const [barcodePrintItem, setBarcodePrintItem] = useState<PrintItem | null>(null);
 
   const timer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => {
@@ -150,6 +153,24 @@ export default function ProductsView({ type }: { type?: 'PHONE' | 'ACCESSORY' })
               </button>
             </>
           )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setBarcodePrintItem({
+                id: p.id,
+                name: p.name,
+                barcode: getProductBarcode(p),
+                price: p.sellingPrice,
+                quantity: 1,
+                sku: p.sku,
+                categoryName: p.category?.name,
+              });
+            }}
+            className="w-8 h-8 rounded-lg text-ink-soft hover:bg-primary-50 hover:text-primary transition-colors"
+            title="طباعة باركود"
+          >
+            <Printer size={15} className="mx-auto" />
+          </button>
           <button onClick={() => { setEditing(p); setFormOpen(true); }} className="w-8 h-8 rounded-lg text-ink-soft hover:bg-primary-50 hover:text-primary transition-colors" title="تعديل">
             <Pencil size={15} className="mx-auto" />
           </button>
@@ -260,6 +281,27 @@ export default function ProductsView({ type }: { type?: 'PHONE' | 'ACCESSORY' })
                 <p className="text-sm text-ink leading-relaxed">{detail.notes}</p>
               </div>
             )}
+
+            <div className="pt-3 border-t border-line flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setBarcodePrintItem({
+                    id: detail.id,
+                    name: detail.name,
+                    barcode: getProductBarcode(detail),
+                    price: detail.sellingPrice,
+                    quantity: 1,
+                    sku: detail.sku,
+                    categoryName: detail.category?.name,
+                  });
+                }}
+                className="btn-transition h-9 px-4 rounded-xl text-xs font-bold flex items-center gap-2 bg-primary-50 text-primary hover:bg-primary-100"
+              >
+                <Printer size={15} />
+                طباعة ملصق باركود
+              </button>
+            </div>
           </div>
         )}
       </Modal>
@@ -278,6 +320,12 @@ export default function ProductsView({ type }: { type?: 'PHONE' | 'ACCESSORY' })
       <AddPhoneUnitsModal product={addingUnits} onClose={() => setAddingUnits(null)} />
       <RemovePhoneUnitsModal product={removingUnits} onClose={() => setRemovingUnits(null)} />
       <AdjustAccessoryModal product={adjusting?.product ?? null} defaultMode={adjusting?.defaultMode ?? 'add'} onClose={() => setAdjusting(null)} />
+
+      <BarcodePrintModal
+        open={barcodePrintItem != null}
+        onClose={() => setBarcodePrintItem(null)}
+        initialItems={barcodePrintItem ? [barcodePrintItem] : []}
+      />
     </div>
   );
 }

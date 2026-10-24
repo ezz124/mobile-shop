@@ -4,7 +4,7 @@ import {
   LayoutDashboard, ScanBarcode, Package, Smartphone, Headphones, Warehouse,
   ShoppingCart, Truck, Undo2, FileText, Users, Building2, Receipt, Wallet,
   BarChart3, UserCog, Settings, DatabaseBackup, LogOut, ChevronFirst,
-  Store, KeyRound,
+  Store, KeyRound, Printer,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -31,6 +31,7 @@ const NAV: NavGroup[] = [
       { to: '/phones', label: 'الهواتف', icon: Smartphone, permission: 'phones', preload: () => import('@/pages/Phones') },
       { to: '/accessories', label: 'الملحقات', icon: Headphones, permission: 'accessories', preload: () => import('@/pages/Accessories') },
       { to: '/inventory', label: 'المخزون', icon: Warehouse, permission: 'inventory', preload: () => import('@/pages/Inventory') },
+      { to: '/barcode-print', label: 'طباعة الباركود', icon: Printer, permission: 'products', preload: () => import('@/pages/BarcodePrint') },
     ],
   },
   {
