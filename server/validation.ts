@@ -65,8 +65,8 @@ const schemas: Partial<Record<ApiChannel, z.ZodTypeAny>> = {
   'suppliers:create': z.object({ name: text, phone: z.string().max(40).optional(), address: z.string().max(500).optional(), notes: z.string().max(2_000).optional() }).strict(),
   'suppliers:update': z.object({ id, name: text, phone: z.string().max(40).optional(), address: z.string().max(500).optional(), notes: z.string().max(2_000).optional(), isActive: z.boolean().optional() }).strict(),
   'suppliers:delete': z.object({ id }).strict(),
-  'expenses:create': z.object({ categoryId: id, amount: money.positive(), description: z.string().max(2_000).optional(), method: z.string().max(30) }).strict(),
-  'expenses:update': z.object({ id, categoryId: id, amount: money.positive(), description: z.string().max(2_000).optional(), method: z.string().max(30) }).strict(),
+  'expenses:create': z.object({ categoryId: id.optional(), amount: money.positive(), description: z.string().max(2_000).optional(), method: z.string().max(30) }).strict(),
+  'expenses:update': z.object({ id, categoryId: id.optional(), amount: money.positive(), description: z.string().max(2_000).optional(), method: z.string().max(30) }).strict(),
   'expenses:delete': z.object({ id }).strict(),
   'sales:addPayment': z.object({ saleId: id, amount: money.positive(), method: z.string().max(30), note: z.string().max(2_000).optional() }).strict(),
   'sales:create': z.object({

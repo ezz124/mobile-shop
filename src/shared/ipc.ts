@@ -232,7 +232,7 @@ export interface PaymentDTO {
 
 export interface ExpenseDTO {
   id: number;
-  categoryId: number;
+  categoryId?: number | null;
   category?: { id: number; name: string } | null;
   amount: number;
   description?: string | null;
@@ -568,8 +568,8 @@ export interface ApiMap {
   'suppliers:delete': { req: { id: number }; res: { ok: boolean } };
 
   'expenses:list': { req: ListParams & { categoryId?: number; from?: string; to?: string }; res: Paginated<ExpenseDTO> & { count: number; sum: number } };
-  'expenses:create': { req: { categoryId: number; amount: number; description?: string; method: string }; res: ExpenseDTO };
-  'expenses:update': { req: { id: number; categoryId: number; amount: number; description?: string; method: string }; res: ExpenseDTO };
+  'expenses:create': { req: { categoryId?: number | null; amount: number; description?: string; method: string }; res: ExpenseDTO };
+  'expenses:update': { req: { id: number; categoryId?: number | null; amount: number; description?: string; method: string }; res: ExpenseDTO };
   'expenses:delete': { req: { id: number }; res: { ok: boolean } };
   'expenseCategories:list': { req: Record<string, never>; res: ExpenseCategoryDTO[] };
   'expenseCategories:create': { req: { name: string }; res: ExpenseCategoryDTO };

@@ -1029,7 +1029,7 @@ export function registerApi(ipc: ApiRegistrar): void {
     return db().$transaction(async (tx) => {
       const expense = await tx.expense.create({
         data: {
-          categoryId: args.categoryId, amount: Math.floor(args.amount),
+          categoryId: args.categoryId ?? null, amount: Math.floor(args.amount),
           description: args.description?.trim() || null, method: args.method, userId: ctx.session!.userId,
         },
         include: { category: true, user: true },
@@ -1055,7 +1055,7 @@ export function registerApi(ipc: ApiRegistrar): void {
       const expense = await tx.expense.update({
         where: { id: args.id },
         data: {
-          categoryId: args.categoryId, amount: Math.floor(args.amount),
+          categoryId: args.categoryId ?? null, amount: Math.floor(args.amount),
           description: args.description?.trim() || null, method: args.method,
         },
         include: { category: true, user: true },
@@ -1099,6 +1099,9 @@ export function registerApi(ipc: ApiRegistrar): void {
   });
   register(ipc, 'expenseCategories:delete', 'expenses', async (a) => {
     const args = req<'expenseCategories:delete'>(a);
+    const cat = await db().expenseCategory.findUnique({ where: { id: args.id } });
+    if (!cat) throw new AppError('التصنيف غير موجود');
+    if (cat.isSystem) throw new AppError('لا يمكن حذف التصنيفات الأساسية للنظام');
     const count = await db().expense.count({ where: { categoryId: args.id } });
     if (count > 0) throw new AppError('لا يمكن حذف تصنيف مرتبط بمصروفات');
     await db().expenseCategory.delete({ where: { id: args.id } });

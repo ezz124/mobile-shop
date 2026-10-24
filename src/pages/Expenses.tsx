@@ -52,7 +52,7 @@ export default function Expenses() {
   const saveMutation = useMutation({
     mutationFn: () => {
       const payload = {
-        categoryId: Number(editing.categoryId),
+        categoryId: editing.categoryId ? Number(editing.categoryId) : undefined,
         amount: Number(editing.amount),
         description: editing.description.trim() || undefined,
         method: editing.method,
@@ -95,7 +95,7 @@ export default function Expenses() {
       key: 'actions', header: 'إجراءات', align: 'center',
       render: (e) => (
         <div className="flex items-center justify-center gap-1">
-          <button onClick={() => { setEditing({ id: e.id, categoryId: String(e.categoryId), amount: String(e.amount), description: e.description ?? '', method: e.method }); setFormOpen(true); }} className="w-8 h-8 rounded-lg text-ink-soft hover:bg-primary-50 hover:text-primary transition-colors">
+          <button onClick={() => { setEditing({ id: e.id, categoryId: e.categoryId ? String(e.categoryId) : '', amount: String(e.amount), description: e.description ?? '', method: e.method }); setFormOpen(true); }} className="w-8 h-8 rounded-lg text-ink-soft hover:bg-primary-50 hover:text-primary transition-colors">
             <Pencil size={15} className="mx-auto" />
           </button>
           <button onClick={() => setDeleting(e)} className="w-8 h-8 rounded-lg text-ink-soft hover:bg-danger-50 hover:text-danger transition-colors">
@@ -153,16 +153,16 @@ export default function Expenses() {
         footer={
           <>
             <Button variant="ghost" onClick={() => setFormOpen(false)}>إلغاء</Button>
-            <Button variant="danger" loading={saveMutation.isPending} disabled={!editing.categoryId || !editing.amount} onClick={() => saveMutation.mutate()}>
+            <Button variant="danger" loading={saveMutation.isPending} disabled={!editing.amount} onClick={() => saveMutation.mutate()}>
               {editing.id ? 'حفظ التعديلات' : 'تسجيل المصروف'}
             </Button>
           </>
         }
       >
         <div className="space-y-4">
-          <FormField label="التصنيف" required>
+          <FormField label="التصنيف">
             <Select value={editing.categoryId} onChange={(e) => setEditing({ ...editing, categoryId: e.target.value })}>
-              <option value="">اختر التصنيف…</option>
+              <option value="">بدون تصنيف (اختياري)</option>
               {(categories ?? []).map((c: ExpenseCategoryDTO) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -236,10 +236,14 @@ function ManageExpenseCategories({ open, onClose }: { open: boolean; onClose: ()
             <div key={c.id} className="flex items-center justify-between gap-2 rounded-xl border border-line px-3 py-2.5">
               <span className="text-sm font-medium text-ink">{c.name}</span>
               <div className="flex items-center gap-2">
-                {c.usageCount != null && <Badge tone="gray">{c.usageCount}</Badge>}
-                <button onClick={() => deleteMutation.mutate(c.id)} className="text-ink-mute hover:text-danger transition-colors">
-                  <Trash2 size={14} />
-                </button>
+                {c.isSystem ? (
+                  <Badge tone="blue">ثابت</Badge>
+                ) : (
+                  <button onClick={() => deleteMutation.mutate(c.id)} title="حذف التصنيف" className="text-ink-mute hover:text-danger transition-colors">
+                    <Trash2 size={14} />
+                  </button>
+                )}
+                {c.usageCount != null && c.usageCount > 0 && <Badge tone="gray">{c.usageCount}</Badge>}
               </div>
             </div>
           ))}

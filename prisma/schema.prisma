@@ -316,16 +316,16 @@ model ExpenseCategory {
 }
 
 model Expense {
-  id          Int             @id @default(autoincrement())
-  categoryId  Int
+  id          Int              @id @default(autoincrement())
+  categoryId  Int?
   amount      Int
   description String?
-  method      String          @default("CASH")
+  method      String           @default("CASH")
   treasuryId  Int?
   userId      Int
-  createdAt   DateTime        @default(now())
-  category    ExpenseCategory @relation(fields: [categoryId], references: [id])
-  user        User            @relation(fields: [userId], references: [id])
+  createdAt   DateTime         @default(now())
+  category    ExpenseCategory? @relation(fields: [categoryId], references: [id])
+  user        User             @relation(fields: [userId], references: [id])
 
   @@index([categoryId])
   @@index([createdAt])
