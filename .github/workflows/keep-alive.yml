@@ -1,0 +1,40 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # يعمل كل 3 أيام الساعة 7:00 صباحاً بتوقيت UTC
+    - cron: '0 7 */3 * *'
+  workflow_dispatch: # يتيح لك تشغيله يدوياً من GitHub في أي وقت
+
+jobs:
+  keep-alive:
+    name: Ping Supabase Database
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send keep-alive query to Supabase
+        run: |
+          URL="${{ secrets.SUPABASE_URL }}"
+          KEY="${{ secrets.SUPABASE_KEY }}"
+
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "❌ Error: SUPABASE_URL or SUPABASE_KEY secret is not set in GitHub repository secrets."
+            exit 1
+          fi
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X GET \
+            "${URL}/rest/v1/Setting?limit=1" \
+            -H "apikey: ${KEY}" \
+            -H "Authorization: Bearer ${KEY}")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "HTTP Status Code: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Supabase is active and healthy! 7-day inactivity timer reset."
+          else
+            echo "⚠️ Unexpected response: $HTTP_CODE"
+            echo "$BODY"
+            exit 1
+          fi
