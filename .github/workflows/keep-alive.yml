@@ -16,13 +16,30 @@ jobs:
           URL="${{ secrets.SUPABASE_URL }}"
           KEY="${{ secrets.SUPABASE_KEY }}"
 
+          # تنظيف علامات الاقتباس والمسافات والشرطات المائلة في النهاية
+          URL=$(echo "$URL" | tr -d '"' | tr -d "'" | xargs)
+          URL="${URL%/}"
+          KEY=$(echo "$KEY" | tr -d '"' | tr -d "'" | xargs)
+
           if [ -z "$URL" ] || [ -z "$KEY" ]; then
             echo "❌ Error: SUPABASE_URL or SUPABASE_KEY secret is not set in GitHub repository secrets."
             exit 1
           fi
 
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X GET \
-            "${URL}/rest/v1/Setting?limit=1" \
+          if [[ "$URL" == postgres* ]]; then
+            echo "❌ Error: You provided a PostgreSQL URL instead of the Supabase API URL (https://<project-ref>.supabase.co)."
+            exit 1
+          fi
+
+          if [[ "$URL" != http* ]]; then
+            URL="https://${URL}"
+          fi
+
+          TARGET_URL="${URL}/rest/v1/Setting?limit=1"
+          echo "Pinging: $TARGET_URL"
+
+          RESPONSE=$(curl -sS -w "\n%{http_code}" -X GET \
+            "$TARGET_URL" \
             -H "apikey: ${KEY}" \
             -H "Authorization: Bearer ${KEY}")
 
